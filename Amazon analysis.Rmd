@@ -1,0 +1,222 @@
+---
+title: "Amazon"
+author: "Eddy"
+date: "2024-10-10"
+output: word_document
+---
+
+#Working on the Amazon dataset
+#working directory
+```{r}
+getwd()
+```
+#loading required packages
+```{r}
+library(tidyverse)
+library(magrittr)
+```
+
+#loading dataset
+```{r}
+amazon <- read.csv("D:/Programming/Datasets/amazon.csv")
+head(amazon)
+```
+
+#structure of the data
+```{r}
+str(amazon)
+```
+#summary of the dataset
+```{r}
+summary(amazon)
+```
+#checking for missing values 
+```{r}
+sum(is.na(amazon))
+```
+#checking for duplicates
+```{r}
+duplicates <- amazon[duplicated(amazon),]
+duplicates
+```
+
+
+#converting numerical columns from character to numeric
+#convering the discounted price variable
+```{r}
+amazon <- amazon %>% 
+  mutate(discounted_price_cleaned = as.numeric(gsub("[^0-9.]", "", discounted_price)))
+summary(amazon$discounted_price_cleaned)
+```
+#converting the actual price variable
+```{r}
+amazon <- amazon %>% 
+  mutate(actual_price_cleaned = as.numeric(gsub("[^0-9.]", "", actual_price)))
+summary(amazon$actual_price_cleaned)
+```
+#converting discount percentage column
+```{r}
+amazon <- amazon %>% 
+  mutate(discount_percentage_cleaned = as.numeric(gsub("%", "",
+                                                       discount_percentage)))
+```
+
+#converting the rating column
+```{r}
+amazon <- amazon %>% 
+  mutate(rating_cleaned = as.numeric(gsub("[^0-9.]", "", rating)), 
+      rating_is_na = is.na(rating_cleaned))
+summary(amazon$rating_cleaned)
+```
+#dealing with the NA created
+```{r}
+na_rows <- amazon %>% 
+  filter(rating_is_na)
+na_rows
+```
+
+#cleaning the rating_cleaned again
+```{r}
+amazon <- amazon %>% 
+  mutate(rating_cleaned1 = gsub("\\|", "", rating_cleaned),
+         rating_cleaned = as.numeric(gsub("[^0-9]", "", rating_cleaned1)))
+summary(amazon$rating_cleaned)
+```
+#dropping the row with the missing
+```{r}
+amazon <- amazon %>% 
+  filter(!is.na(rating_cleaned))
+summary(amazon$rating_cleaned)
+```
+#converting the rating discount var
+```{r}
+amazon <- amazon %>% 
+  mutate(rating_count_cleaned = as.numeric(gsub("[^0-9].", "", rating_count)))
+summary(amazon$rating_count_cleaned)
+```
+#removing rows with NAs
+```{r}
+amazon <- amazon %>% 
+  filter(!is.na(rating_count_cleaned))
+summary(amazon$rating_count_cleaned)
+```
+#checking the variables
+```{r}
+names(amazon)
+```
+#Analysis
+#1.Which products have the highest customer satisfaction based on ratings?
+```{r}
+product_satisfaction <- amazon %>% 
+  group_by(product_id, product_name) %>% 
+  summarize(
+    average_rating = mean(rating_cleaned),
+    total_ratings = sum(rating_count_cleaned)
+  ) %>% 
+  arrange(desc(average_rating))
+```
+#Top 10 products with the highest customer satisfaction
+```{r}
+top_10_products <- product_satisfaction %>% 
+  top_n(10, average_rating)
+top_10_products
+```
+
+#2.Analyze the products with the highest discount percentages. 
+```{r}
+top_discounted_products <- amazon %>%
+  select(product_id, product_name, discount_percentage_cleaned) %>%
+  arrange(desc(discount_percentage_cleaned)) %>%
+  slice_head(n = 10) 
+top_discounted_products
+```
+#3.Which product categories are most popular, and how do they perform in terms of customer ratings?
+```{r}
+category_performance <- amazon %>% 
+  group_by(category) %>% 
+  summarize(ratings_total = sum(rating_count_cleaned),
+            ratings_mean = mean(rating_cleaned)) %>% 
+  arrange(desc(ratings_total))
+category_performance
+```
+
+
+#4.Is there a correlation between discounted price and product rating? 
+```{r}
+correlation <- cor(amazon$discount_percentage_cleaned, amazon$rating_cleaned)
+print(paste("Correlation coefficiency:", correlation))
+```
+#very weak correlation
+#discounted price does not significantly impact customer ratings.
+
+#visualizing the correlation
+```{r}
+ggplot(amazon, aes(x= discounted_price_cleaned, y= rating_cleaned)) +
+  geom_point() +
+  geom_smooth(method = "lm", color = "blue", se = FALSE) +
+  labs(title = "Relationship Between Discounted Price and Product Rating",
+       x = "Discounted Price",
+       y = "Product Rating")
+```
+
+#5.What are the common themes in customer reviews, and what products receive the most positive or negative feedback?
+#cleaning the review content variable
+#loading additional package 
+```{r}
+library(tidytext)
+```
+
+#loading sentiment
+```{r}
+bing <- get_sentiments("bing")
+```
+
+#Tokenizing and performing sentiment analysis
+```{r}
+sentiment_scores <- amazon %>% 
+  unnest_tokens(word, review_content) %>% 
+  inner_join(bing) %>% 
+  count(product_id, sentiment) %>% 
+  spread(sentiment, n, fill = 0) %>% 
+  mutate(sentiment_score = positive - negative)
+```
+#joining with product rating
+```{r}
+product_feedback <- amazon %>% 
+  group_by(product_id, product_name) %>% 
+  summarize(avg_rating = mean(rating_cleaned)) %>% 
+  left_join(sentiment_scores, by = "product_id")
+product_feedback
+```
+#6.Identifying products with most positive feedback
+```{r}
+most_positive <- product_feedback %>% 
+  arrange(desc(sentiment_score)) %>% 
+  head(10)
+most_positive
+```
+
+#Identifying products with most negative feedback
+```{r}
+most_negative <- product_feedback %>% 
+  arrange(sentiment_score) %>% 
+  head(10)
+most_negative
+```
+
+#6. Determine which products have the highest engagement based on the number of reviews.
+
+```{r}
+product_engagements <- amazon %>% 
+  group_by(product_id, product_name) %>% 
+  summarize(number_of_reviews = n()) %>% 
+  arrange(desc(number_of_reviews))
+product_engagements
+```
+#top 10 product with the highest engagement
+```{r}
+top_engaged_products <- product_engagements %>%
+  top_n(10, number_of_reviews)
+top_engaged_products
+```
+
