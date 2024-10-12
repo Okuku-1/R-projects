@@ -1,0 +1,386 @@
+---
+title: "Bike Sales part 1"
+author: "Eddy"
+date: "2024-10-11"
+output: word_document
+---
+
+setting working directory
+```{r}
+getwd()
+```
+```{r}
+#loading required packages
+library(tidyverse)
+library(magrittr)
+```
+
+loading the sales dataset
+```{r}
+#importing data
+sales <- read.csv("D:/Programming/Datasets/Sales.csv")
+sales
+```
+
+viewing the structure of the sales data set
+```{r}
+#structure
+str(sales)
+```
+summary of sales data
+```{r}
+summary(sales)
+```
+checking for missing values in the dataset
+```{r}
+sum(is.na(sales))
+```
+checking for duplicates
+```{r}
+duplicates <- sales[duplicated(sales),]
+duplicates
+```
+removing duplicates
+```{r}
+sales <- sales[!duplicated(sales),]
+```
+
+Analysis
+What's the mean of `Customers_Age`?
+```{r}
+#mean of customer age
+mean(sales$Customer_Age)
+```
+Visualization of density plot and box plot of customer age
+```{r}
+#density plot of customer age
+ggplot(sales, aes(x = Customer_Age)) +
+  geom_density(fill = "skyblue", alpha = 0.5) +
+  labs(title = "Density Plot of Customer Age",
+       x = "Customer Age",
+       y = "Density")
+```
+
+```{r}
+#boxplot of customer age
+ggplot(sales, aes(y = Customer_Age)) +
+  geom_boxplot(fill = "lightgreen") +
+  labs(title = "Boxplot of Customer Age",
+       y = "Customer Age")
+```
+Mean of Order quantity
+```{r}
+mean(sales$Order_Quantity)
+```
+Visualization of order quantity
+```{r}
+ggplot(sales, aes(x = Order_Quantity)) +
+  geom_histogram(fill = "lightblue") +
+  labs(title = "Histogram of Order Quality",
+       x = "Order Quality",
+       y = "Frequency")
+```
+```{r}
+#boxplot of order quality
+ggplot(sales, aes(y=Order_Quantity)) +
+  geom_boxplot(fill="lightgreen") +
+  labs(title = "Boxplot of order Quality",
+       y = "Order Quality")
+```
+Number of sales per year
+```{r}
+#yearly sales
+yearly_sales <- sales %>% 
+  group_by(Year) %>% 
+  summarize(total_sales = sum(Order_Quantity)) %>% 
+  arrange(Year)
+yearly_sales
+```
+Pie chart of yearly sales
+```{r}
+ggplot(yearly_sales, aes(x = "", y = total_sales, fill = Year)) +
+  geom_bar(width = 1, stat = "identity") + 
+  coord_polar(theta = "y") +
+  labs(title = "Pie Chart of Yearly Sales") +
+  theme_void()
+```
+
+Sales per Month
+```{r}
+#monthly sales
+monthly_sales <- sales %>% 
+  group_by(Month) %>% 
+  summarize(total_monthly_sales = sum(Order_Quantity)) %>% 
+  arrange(Month)
+monthly_sales
+  
+```
+
+Bar plot of Monthly Sales
+```{r}
+ggplot(monthly_sales, aes(x = Month, y = total_monthly_sales)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  labs(title = "Bar Plot of Monthly Sales", x = "Month", y = "Total Monthly Sales (Revenue)") +
+  theme_minimal()
+```
+Which country has most sales
+```{r}
+most_sales_country <- sales %>% 
+  select(Country, Order_Quantity) %>% 
+  arrange(desc(Order_Quantity))
+most_sales_country
+```
+Bar plot of sales per country
+```{r}
+ggplot(most_sales_country, aes(x= Country, y= Order_Quantity)) +
+  geom_bar(stat = "identity", fill = "lightgreen") +
+  labs(title = "Bar plot of Most saler per Country",
+       x = "Country",
+       y = "Country Sales")
+```
+
+Creating a list of unique products
+```{r}
+unique_products <- sales %>% 
+  distinct(Product)
+unique_products
+```
+Most sold product
+```{r}
+top_10_sold_product <- sales %>% 
+  group_by(Product) %>% 
+  summarize(product_sales = sum(Order_Quantity)) %>% 
+  arrange(desc(product_sales)) %>% 
+  head(10)
+top_10_sold_product
+```
+Bar plot of top 10 sold products
+```{r}
+ggplot(top_10_sold_product, aes(x= Product, y= product_sales )) +
+  geom_bar(stat = "Identity", fill= "lightgreen") +
+  labs(title = "Bar Plot of Top Ten Products",
+       y= "Product Sales",
+       x = "Product") +
+   theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+#Relationship between Unit cost and Unit Price
+```{r}
+#correlation between unit cost and unit price
+correlation <- cor(sales$Unit_Cost, sales$Unit_Price)
+print(paste("The correlation is:", correlation))
+```
+There is high correlation of 0.99 between unit cost and unit price
+An increase in unit cost increase the unit price also
+
+Plotting a scatter plot to visualize the correlation
+```{r}
+ggplot(sales, aes(x= Unit_Cost, y= Unit_Price)) +
+  geom_point() +
+  geom_smooth(method = "lm", se=FALSE) +
+  labs(title = "Scatter plot of Unit Cost against Unit Sales",
+       x= "Unit Cost",
+       y= "Unit Sales")
+```
+Relationship between Profit and Country
+```{r}
+#boxpot of profit by country
+ggplot(sales, aes(x= Country, y=Profit, fill = Country)) +
+  geom_boxplot() +
+  labs(title = "Boxplot of Profit by Country",
+       y = "Profit",
+       x= "Country") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+Relationship between customer age and country
+```{r}
+ggplot(sales, aes(x= Country, y= Customer_Age, fill= Country)) +
+  geom_boxplot() +
+  labs(title = "Boxplot of Customer Age by Country",
+       x = "Country",
+       y = "Customer Age") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust=1))
+```
+Cleaning the date column
+converting it from character to date type
+```{r}
+sales <- sales %>% 
+  mutate(Date = as.Date(Date, format = "%m/%d/%Y"))
+str(sales$Date)
+```
+Number of orders made in France or Canada
+```{r}
+canada_france_orders <- sales %>% 
+  group_by(Country) %>% 
+  filter(Country %in% c("France", "Canada")) %>% 
+  summarise(total_orders = n()) 
+canada_france_orders
+```
+How many Bike Racks orders were made in Canada
+```{r}
+bike_rack_orders <- sales %>% 
+  group_by(Country) %>% 
+  filter(Country == "Canada" & Sub_Category == "Bike Racks") %>% 
+  summarise(total_racks_orders = n())
+bike_rack_orders
+```
+
+How many orders were made in each state of France
+```{r}
+france_states_order <- sales %>% 
+  group_by(State) %>% 
+  filter(Country == "France") %>% 
+  summarise(france_states_total_sales = n()) %>% 
+  arrange(desc(france_states_total_sales))
+france_states_order
+```
+Bar plot visualization of sales in each state in France
+
+```{r}
+ggplot(france_states_order, aes(x=State, y= france_states_total_sales)) +
+  geom_bar(stat = "identity", fill= "lightgreen") +
+  labs(title = "Bar Plot of Sales in Each State in France",
+       x= "States",
+       y= "Total Sales") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+Sales made per category
+```{r}
+product_sales_per_category <- sales %>% 
+  group_by(Product_Category) %>% 
+  summarise(category_sales = n())
+product_sales_per_category
+```
+
+Pie chart of the result
+```{r}
+ggplot(product_sales_per_category, aes(x= "", y = category_sales, fill = Product_Category)) +
+  geom_bar(width = 1, stat = "identity") +
+  coord_polar(theta = "y") +
+  labs(title = "Pie Chart of Product Sales Per Category") +
+  theme_void()
+```
+Sales made per accessory sub category
+```{r}
+accessory_sales_sub_category <- sales %>% 
+  group_by(Sub_Category) %>% 
+  summarize(sub_category_sales = n())
+accessory_sales_sub_category
+```
+
+Bar plot of the results
+```{r}
+ggplot(accessory_sales_sub_category, aes(x= Sub_Category, y= sub_category_sales)) +
+  geom_bar(stat= "identity", fill = "brown") +
+  labs(title = "Bar plot of Accessories Sales Per Sub Category",
+       x= "Sub Category",
+       y= "SubCategory Sales") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle=45, hjust=1))
+```
+
+Number of orders per bike sub category
+```{r}
+bike_orders <- sales %>% 
+  group_by(Sub_Category) %>% 
+  filter(Product_Category == "Bikes") %>% 
+  summarise(total_orders = n()) %>% 
+  arrange(desc(total_orders))
+bike_orders
+```
+Pie Chart of bike orders per category
+```{r}
+ggplot(bike_orders, aes(x= "", y= total_orders, fill=Sub_Category)) +
+  geom_bar(width = 1, stat = "identity") +
+  coord_polar(theta = "y") +
+  labs(title = "Pie chart of Orders per Bike") +
+  theme_void()
+```
+Which gender has the most amount of sales
+```{r}
+gender_sales <- sales %>% 
+  group_by(Customer_Gender) %>% 
+  summarise(total_sales = n()) %>% 
+  arrange(desc(total_sales))
+gender_sales
+```
+
+Sales with more than 500 in revenue made by men
+```{r}
+men_sales_over_500 <- sales %>% 
+  #group_by(Customer_Gender, Revenue) %>% 
+  filter(Customer_Gender == "M" & Revenue > 500) %>% 
+  summarise(total_sales = sum(Revenue))
+
+men_sales_over_500
+```
+
+Top 5 sales with the highest revenue
+```{r}
+Top_5_sales <- sales %>% 
+  arrange(desc(Revenue)) %>% 
+  head(5)
+Top_5_sales
+```
+
+Sale with the highest revenue
+```{r}
+highest_sale <- sales %>% 
+  arrange(desc(Revenue)) %>% 
+  head(1)
+highest_sale
+```
+Mean order quantity with order more than 10k in revenue
+```{r}
+more_10k_order <- sales %>% 
+  filter(Revenue > 10000) %>% 
+  summarise(mean_order = mean(Order_Quantity))
+mean_10k_order
+```
+Mean order quality with order less than 10k in revenue
+```{r}
+less_10k_order <- sales %>% 
+  filter(Revenue < 10000) %>% 
+  summarize(mean_order = mean(Order_Quantity))
+less_10k_order
+```
+Orders made in May 2016
+```{r}
+may_2016_orders <- sales %>% 
+  filter(Month == "May" & Year == 2016) %>% 
+  summarize(total_orders =n())
+may_2016_orders
+```
+Orders between May and July 2016
+```{r}
+may_july_orders <- sales %>%
+  filter(Year == 2016 & Month %in% c("May", "June", "July")) %>% 
+  summarize(total_orders = n())
+may_july_orders
+```
+
+Grouped boxplot per month with profit values
+```{r}
+# Create grouped box plot of Profit per Month
+ggplot(sales, aes(x = factor(Month), y = Profit, fill = factor(Month))) +
+  geom_boxplot() +
+  labs(title = "Box Plot of Profit by Month", x = "Month", y = "Profit") +
+  scale_x_discrete(labels = month.name[1:12]) +  # Display full month names
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+Add 7.2% tax on unit price of United States
+```{r}
+tax_us <- sales %>% 
+  group_by(Unit_Price) %>% 
+  filter(Country == "United States") %>% 
+  summarize(increase_unit_price = 7.2 * Unit_Price) %>% 
+  arrange(desc(increase_unit_price))
+tax_us
+```
+
